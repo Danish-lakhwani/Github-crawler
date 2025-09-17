@@ -2,6 +2,15 @@ name: GitHub Crawler (crawl-stars)
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Number of repos to crawl'
+        required: false
+        default: '100000'
+      batch_size:
+        description: 'Batch size (max 100)'
+        required: false
+        default: '100'
 
 jobs:
   crawl:
