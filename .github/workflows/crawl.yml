@@ -59,14 +59,13 @@ jobs:
           psql -h localhost -U postgres -d postgres -f schema.sql
 
       - name: Crawl stars
+        working-directory: ${{ github.workspace }}
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          python src/crawler.py --target ${{ github.event.inputs.target }} --batch-size ${{ github.event.inputs.batch_size }}
-
-
+          python -m src.crawler --target ${{ github.event.inputs.target }} --batch-size ${{ github.event.inputs.batch_size }}
 
       - name: Dump contents to CSV
         env:
