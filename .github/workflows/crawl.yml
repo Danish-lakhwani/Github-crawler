@@ -60,10 +60,11 @@ jobs:
 
       - name: Crawl stars
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.Personal_Token }}
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
         run: |
-          python src/crawler.py --target 100000 --batch-size 100
+          python src/crawler.py --target ${{ github.event.inputs.target }} --batch-size ${{ github.event.inputs.batch_size }}
+
 
       - name: Dump contents to CSV
         env:
