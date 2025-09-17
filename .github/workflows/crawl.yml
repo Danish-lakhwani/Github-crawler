@@ -1,0 +1,70 @@
+name: GitHub Crawler (crawl-stars)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do echo "waiting"; sleep 1; done
+
+      - name: Setup Postgres (create tables)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d postgres -f schema.sql
+
+      - name: Crawl stars
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: |
+          python src/crawler.py --target 100000 --batch-size 100
+
+      - name: Dump contents to CSV
+        env:
+          PGPASSWORD: postgres
+        run: |
+          mkdir -p artifacts
+          psql -h localhost -U postgres -d postgres -c "\copy (SELECT id, full_name, owner, url, stars, last_crawled FROM repositories) TO STDOUT WITH CSV HEADER" > artifacts/repos.csv
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repos-csv
+          path: artifacts/repos.csv
